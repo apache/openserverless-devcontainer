@@ -19,8 +19,11 @@ fi
 if test -n "$SSHKEY"
 then
     mkdir -p $HOME/.ssh
-    echo "$SSHKEY" >>$HOME/.ssh/authorized_keys
-    chmod 600 ~/.ssh/authorized_keys
+    if ! grep "$SSHKEY" $HOME/.ssh/authorized_keys
+    then echo "$SSHKEY" >>$HOME/.ssh/authorized_keys
+    fi
+    chmod 600 $HOME/.ssh/authorized_keys
+    chmod 700 $HOME/.ssh
 fi
 
 # fix permissions
