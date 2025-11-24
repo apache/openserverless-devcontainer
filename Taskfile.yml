@@ -12,6 +12,13 @@ tasks:
 
   show: "echo {{.NAME}}:{{.TAG}}"
 
+  update:
+    silent: true
+    cmds:
+    - jq . ../olaris/opsroot.json >_opsroot.orig
+    - jq '.config.images.devcontainer = "{{.NAME}}:{{.TAG}}"' ../olaris/opsroot.json >_opsroot.json
+    - diff _opsroot.orig _opsroot.json || cp -v _opsroot.json ../olaris/opsroot.json
+
   image-tag:
       - git tag -d "$(git tag)" || true
       - git tag "0.1.0-incubating.$(date +%y%m%d%H%M)"

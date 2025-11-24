@@ -38,12 +38,12 @@ RUN \
     npm install -g npm
 
 RUN userdel node ; rm -Rvf /home/node
+ENV HOME=/home
 ENV OPS_HOME=/home
 ENV OPS_BRANCH=main
 ENV PATH=/home/.local/bin:/usr/local/bin:/usr/bin:/bin
 RUN printf "OPS_HOME=$OPS_HOME\nOPS_BRANCH=$OPS_BRANCH\nPATH=$PATH\n" >/etc/environment
 RUN \
-    export HOME=/home ;\
     curl -sL https://raw.githubusercontent.com/apache/openserverless-cli/refs/heads/main/install.sh | bash ;\
     ops -t ;\
     git clone https://github.com/apache/openserverless-devcontainer $HOME/.ops/openserverless-devcontainer ;\
