@@ -41,6 +41,6 @@ tasks:
   publish:
     - git commit -m "publishing $(date)" -a || true
     - task: image-tag
-    - task update ops-root
+    - task update-opsroot
     - git push origin main --tags
 
