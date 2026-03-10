@@ -83,6 +83,6 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          tags: ${{ env.BASE_REPO }}/openserverless-runtime-go:${{ matrix.version }}-${{ env.IMG_TAG }}
+          tags: ${{ env.BASE_REPO }}/openserverless-devcontainer:${{ env.IMG_TAG }}
           outputs:  'type=registry,push=true'
 
