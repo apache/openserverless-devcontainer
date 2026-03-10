@@ -39,7 +39,7 @@ tasks:
     - task update-opsroot
 
   publish:
-    - git commit -m "publishing $(date)" -a
+    - git commit -m "publishing $(date)" -a || true
     - task: image-tag
     - task update ops-root
     - git push origin main --tags
