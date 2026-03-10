@@ -22,9 +22,7 @@ ENV PATH=/home/.local/bin:/usr/local/bin:/usr/bin:/bin
 RUN printf "OPS_HOME=$OPS_HOME\nOPS_BRANCH=$OPS_BRANCH\nPATH=$PATH\n" >/etc/environment
 RUN \
     curl -sL https://raw.githubusercontent.com/apache/openserverless-cli/refs/heads/main/install.sh | bash ;\
-    ops -t ;\
-    git clone https://github.com/apache/openserverless-devcontainer $HOME/.ops/openserverless-devcontainer ;\
-    ln -sf  $HOME/.ops/openserverless-devcontainer/olaris-tk $HOME/.ops/olaris-tk
+    ops -t
 
 ADD supervisord.ini /etc/supervisord.ini
 ADD start.sh /usr/local/bin/start.sh

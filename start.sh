@@ -27,6 +27,17 @@ then
     chmod 700 $HOME/.ssh
 fi
 
+touch ~/.bashrc
+echo ARCH="$(dpkg --print-architecture)" >>~/.bashrc
+echo 'export PATH="$HOME/.local/bin:$HOME:$HOME/.ops/linux-$ARCH/bin:$PATH"' >>~/.bashrc
+
+if [ -n "$OPS_PASSWORD" ] && [ -n "$OPS_USER" ] && [ -n "$OPS_APIHOST" ]
+then
+    cd $HOME
+    echo -e "OPS_USER=$OPS_USER\nOPS_PASSWORD=$OPS_PASSWORD\nOPS_APIHOST=$OPS_APIHOST\n" >.env
+    ops ide login
+fi
+
 # fix permissions
 chmod 0755 $HOME
 chown -Rf "$USERID" /home

@@ -2,17 +2,17 @@ version: 3
 
 vars:
 
-  NAME: ghcr.io/sciabarracom/openserverless-devcontainer
-
+  NAME: apache/openserverless-devcontainer
   TAG:
     sh: git tag --sort=-creatordate | head -n 1 || "latest"
 
 tasks:
+
   default: task --list-all
 
   show: "echo {{.NAME}}:{{.TAG}}"
 
-  update:
+  update-opsroot:
     silent: true
     cmds:
     - jq . ../olaris/opsroot.json >_opsroot.orig
@@ -32,6 +32,15 @@ tasks:
       - docker rm -f ssh-devcontainer || true
       - docker images | awk '/<none>|devcontainer/{print $3}' | xargs docker rmi -f || true
 
-  build-and-tag:
+  all:
     - task: image-tag
-    - task: build
+    # warning: the ':' is missing intentionally to reload the tag
+    - task build
+    - task update-opsroot
+
+  publish:
+    - git commit -m "publishing $(date)" -a
+    - task: image-tag
+    - task update ops-root
+    - git push origin main --tags
+
