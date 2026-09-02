@@ -1,0 +1,93 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+name: List Images
+on:
+  workflow_dispatch:
+
+jobs:
+  list:
+    name: List apache/openserverless-* images and tags
+    runs-on: ubuntu-22.04
+    env:
+      IMAGES: >-
+        openserverless-admin-api
+        openserverless-devcontainer
+        openserverless-operator
+        openserverless-runtime-common
+        openserverless-runtime-go
+        openserverless-runtime-java
+        openserverless-runtime-nodejs
+        openserverless-runtime-php
+        openserverless-runtime-python
+        openserverless-streamer
+        openserverless-wsk-controller
+        openserverless-wsk-invoker
+        openserverless-wsk-scala
+        openserverless-wsk-scheduler
+        openserverless-wsk-standalone
+    steps:
+      - name: List images and tags
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Get a Docker Hub JWT (works with both password and PAT)
+          TOKEN=$(curl -s -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg u "$DOCKERHUB_USER" --arg p "$DOCKERHUB_TOKEN" \
+                  '{username:$u,password:$p}')" \
+            https://hub.docker.com/v2/users/login/ | jq -r '.token // empty')
+
+          if [ -z "$TOKEN" ]; then
+            echo "Docker Hub login failed" >&2
+            exit 1
+          fi
+
+          AUTH=(-H "Authorization: JWT $TOKEN")
+
+          {
+            echo "## apache/openserverless-* images"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for REPO in $IMAGES; do
+            echo "=== apache/$REPO ==="
+            echo "### apache/$REPO" >> "$GITHUB_STEP_SUMMARY"
+
+            TAGS=""
+            TURL="https://hub.docker.com/v2/repositories/apache/$REPO/tags/?page_size=100"
+            while [ -n "$TURL" ] && [ "$TURL" != "null" ]; do
+              TPAGE=$(curl -s "${AUTH[@]}" "$TURL")
+              TAGS="$TAGS$(echo "$TPAGE" | jq -r '.results[]? | "\(.name)\t\(.last_updated)"')
+          "
+              TURL=$(echo "$TPAGE" | jq -r '.next')
+            done
+
+            TAGS=$(echo "$TAGS" | sed '/^\s*$/d')
+            if [ -z "$TAGS" ]; then
+              echo "  (no tags)"
+              echo "- _(no tags)_" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "$TAGS" | while IFS=$'\t' read -r NAME UPDATED; do
+                echo "  $NAME (updated $UPDATED)"
+                echo "- \`$NAME\` — updated $UPDATED" >> "$GITHUB_STEP_SUMMARY"
+              done
+            fi
+            echo >> "$GITHUB_STEP_SUMMARY"
+          done
