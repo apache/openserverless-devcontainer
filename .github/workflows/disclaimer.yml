@@ -1,0 +1,149 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+name: Add Disclaimer
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only show what would be updated (no write)'
+        type: boolean
+        default: true
+      limit:
+        description: 'Max repositories to update (0 = all)'
+        type: string
+        default: '0'
+
+permissions:
+  contents: read
+
+jobs:
+  disclaimer:
+    name: Prepend incubation disclaimer to apache/openserverless-* descriptions
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update descriptions
+        env:
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          set -euo pipefail
+
+          DISCLAIMER_FILE=.github/workflows/DISCLAIMER.md
+          MARKER='THESE IMAGES ARE NOT APACHE RELEASES'
+
+          test -f "$DISCLAIMER_FILE"
+
+          # Docker Hub JWT (works with both password and PAT)
+          TOKEN=$(curl -s -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg u "$DOCKERHUB_USER" --arg p "$DOCKERHUB_TOKEN" \
+                  '{username:$u,password:$p}')" \
+            https://hub.docker.com/v2/users/login/ | jq -r '.token // empty')
+
+          if [ -z "$TOKEN" ]; then
+            echo "Docker Hub login failed" >&2
+            exit 1
+          fi
+
+          AUTH=(-H "Authorization: JWT $TOKEN")
+
+          # ---------- 1. discover apache/openserverless-* repositories ----------
+          REPOS=/tmp/repos.txt
+          : > "$REPOS"
+          URL="https://hub.docker.com/v2/repositories/apache/?page_size=100"
+          while [ -n "$URL" ] && [ "$URL" != "null" ]; do
+            PAGE=$(curl -s "${AUTH[@]}" "$URL")
+            echo "$PAGE" | jq -r '.results[]?.name' >> "$REPOS"
+            URL=$(echo "$PAGE" | jq -r '.next // ""')
+          done
+
+          grep '^openserverless' "$REPOS" | sort -u > /tmp/os_repos.txt || true
+          N_REPOS=$(wc -l < /tmp/os_repos.txt | tr -d ' ')
+
+          echo "found $N_REPOS openserverless repositories"
+          sed 's/^/  /' /tmp/os_repos.txt
+
+          if [ "$N_REPOS" -eq 0 ]; then
+            echo "no apache/openserverless-* repositories found" >&2
+            exit 1
+          fi
+
+          {
+            echo "## Disclaimer report (dry_run=$DRY_RUN, limit=$LIMIT)"
+            echo
+            echo "Found **$N_REPOS** \`apache/openserverless-*\` repositories."
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # ---------- 2. prepend the disclaimer ----------
+          FAILED=0
+          COUNT=0
+          SKIPPED=0
+          while read -r REPO; do
+            [ -z "$REPO" ] && continue
+            if [ "$LIMIT" -gt 0 ] && [ "$COUNT" -ge "$LIMIT" ]; then break; fi
+
+            API="https://hub.docker.com/v2/repositories/apache/$REPO/"
+            CUR=$(curl -s "${AUTH[@]}" "$API" | jq -r '.full_description // ""')
+
+            # idempotent: never stack the disclaimer twice
+            if printf '%s' "$CUR" | grep -qF "$MARKER"; then
+              SKIPPED=$((SKIPPED + 1))
+              echo "skip $REPO (already has disclaimer)"
+              echo "- :heavy_minus_sign: \`apache/$REPO\` already has the disclaimer" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            COUNT=$((COUNT + 1))
+
+            # disclaimer first, then a blank line, then the existing README
+            NEW=$(cat "$DISCLAIMER_FILE"; printf '\n\n'; printf '%s' "$CUR")
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "(dry run) would update $REPO"
+              echo "- (dry run) would update \`apache/$REPO\`" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            BODY=$(jq -n --arg d "$NEW" '{full_description:$d}')
+            CODE=$(curl -s -o /tmp/resp.json -w '%{http_code}' -X PATCH "$API" \
+              "${AUTH[@]}" -H 'Content-Type: application/json' -d "$BODY")
+
+            if [ "$CODE" = "200" ]; then
+              echo "updated $REPO"
+              echo "- updated \`apache/$REPO\`" >> "$GITHUB_STEP_SUMMARY"
+            else
+              FAILED=1
+              echo "FAILED $REPO (HTTP $CODE)" >&2
+              head -c 300 /tmp/resp.json >&2 || true
+              echo "- :x: failed \`apache/$REPO\` (HTTP $CODE)" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done < /tmp/os_repos.txt
+
+          echo
+          echo "processed $COUNT, skipped $SKIPPED of $N_REPOS"
+          {
+            echo
+            echo "Processed **$COUNT**, skipped **$SKIPPED** (already had it), of **$N_REPOS**."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit $FAILED
