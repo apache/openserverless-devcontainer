@@ -1,0 +1,100 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+name: Copy Images
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only show what would be copied (no push)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  copy:
+    name: Copy controller1/invoker1 into controller/invoker
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: GHCR login
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Registry login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Copy images
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          OPSROOT=opsroot.json
+
+          # controller1 -> controller, invoker1 -> invoker
+          PAIRS="controller invoker"
+
+          echo "## Copy report (dry_run=$DRY_RUN)" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+
+          FAILED=0
+          for NAME in $PAIRS; do
+            SRC=$(jq -r --arg k "${NAME}1" '.config.images[$k] // empty' "$OPSROOT")
+            DST=$(jq -r --arg k "$NAME"    '.config.images[$k] // empty' "$OPSROOT")
+
+            if [ -z "$SRC" ] || [ -z "$DST" ]; then
+              echo "missing ${NAME}1 or $NAME in $OPSROOT" >&2
+              echo "- :x: missing \`${NAME}1\` or \`$NAME\` in \`$OPSROOT\`" >> "$GITHUB_STEP_SUMMARY"
+              FAILED=1
+              continue
+            fi
+
+            echo "copy $SRC -> $DST"
+            # show the source manifest list, so all the architectures are visible
+            docker buildx imagetools inspect "$SRC"
+
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "- (dry run) \`$SRC\` -> \`$DST\`" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            # imagetools create copies the whole manifest list: all architectures
+            if docker buildx imagetools create --tag "$DST" "$SRC"; then
+              echo "- copied \`$SRC\` -> \`$DST\`" >> "$GITHUB_STEP_SUMMARY"
+            else
+              FAILED=1
+              echo "FAILED $SRC -> $DST" >&2
+              echo "- :x: failed \`$SRC\` -> \`$DST\`" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          exit $FAILED
