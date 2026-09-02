@@ -56,7 +56,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          OPSROOT=opsroot.json
+          OPSROOT=.github/workflows/opsroot.json
 
           # controller1 -> controller, invoker1 -> invoker
           PAIRS="controller invoker"
