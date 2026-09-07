@@ -26,6 +26,7 @@ header:
     - 'LICENSE'
     - 'NOTICE'
     - 'DISCLAIMER'
+    - '**/DISCLAIMER.md'
     - WARN
     - '.env.dist'
     - '.gitattributes'
