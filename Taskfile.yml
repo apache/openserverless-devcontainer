@@ -1,46 +1,168 @@
-version: 3
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+version: '3'
 
 vars:
-
-  NAME: apache/openserverless-devcontainer
+  BASETAG: 0.9.0-incubating
+  SUFFIX: "-snapshot"
+  COMMIT_ID:
+    sh: git rev-parse --short HEAD
+  # taken from the tag - overridable with DEVCONTAINER_TAG env var
   TAG:
-    sh: git tag --sort=-creatordate | head -n 1 || "latest"
+    sh: echo "${DEVCONTAINER_TAG:-$(git describe --tags --abbrev=0 2>/dev/null || git rev-parse --short HEAD)}"
+  # taken from the Dockerfile - overridable with MY_DEVCONTAINER_IMAGE env var
+  DEVCONTAINER_IMAGE:
+    sh: echo "${MY_DEVCONTAINER_IMAGE:-$(awk -F= '/ARG DEVCONTAINER_IMAGE_DEFAULT=/ { print $2 ; exit }' Dockerfile)}"
+
+dotenv:
+  - .env
 
 tasks:
 
   default: task --list-all
 
-  show: "echo {{.NAME}}:{{.TAG}}"
+  image:
+    desc: |
+      Print the image name that would be built.
+    silent: true
+    cmds:
+      - echo "Devcontainer=${MY_DEVCONTAINER_IMAGE:-{{.DEVCONTAINER_IMAGE}}}:{{.TAG}}"
+
+  show:
+    silent: true
+    cmds:
+      - echo "${MY_DEVCONTAINER_IMAGE:-{{.DEVCONTAINER_IMAGE}}}:{{.TAG}}"
+
+  docker-login-ghcr:
+    silent: true
+    cmds:
+      - |
+        echo "Logging in to ghcr.io as $GITHUB_USER"
+        echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_USER --password-stdin
+
+  docker-login-dockerhub:
+    silent: true
+    cmds:
+      - |
+        echo "Logging in to docker.io as $DOCKERHUB_USER"
+        echo $DOCKERHUB_TOKEN | docker login docker.io -u $DOCKERHUB_USER --password-stdin
+
+  docker-login:
+    desc: |
+      Login to the registry the image name points to: docker.io for apache images,
+      ghcr.io otherwise.
+    silent: true
+    cmds:
+      - |
+        IMG="${MY_DEVCONTAINER_IMAGE:-{{.DEVCONTAINER_IMAGE}}}"
+        case "$IMG" in
+          ghcr.io/*) task docker-login-ghcr ;;
+          *)         task docker-login-dockerhub ;;
+        esac
+
+  # deprecated - use task tag
+  image-tag:
+    desc: "[deprecated] use task tag"
+    silent: true
+    cmds:
+      - 'echo "deprecated, use task tag"'
+
+  tag:
+    desc: |
+      Create a new snapshot tag for the current git commit.
+      NOTE: this deletes the existing local tags first - snapshot tags are disposable.
+    silent: true
+    vars:
+      TS:
+        sh: date '+%y %m %d %H %M' | awk '{printf "%s%s%02d%s%02d\n", $1, substr("abcdefghijkl",$2+0,1), $3, substr("abcdefghijklmnopqrstuvwx",$4+1,1), $5}'
+    cmds:
+      - git tag -d $(git tag) 2>/dev/null || true
+      - |
+        TAG="{{.BASETAG}}.{{.TS}}{{.SUFFIX}}"
+        git tag -f $TAG
+        echo New tag $TAG
+
+  ci:
+    desc: |
+      Push the tags, starting the GitHub Actions build on the repo that received them.
+      This does not build anything locally.
+    cmds:
+      - git push --tags
+
+  buildx:
+    desc: |
+      Build the docker image using buildx. Set PUSH=1 to push the image to the registry.
+    silent: true
+    cmds:
+      - |
+        IMG="${MY_DEVCONTAINER_IMAGE:-{{.DEVCONTAINER_IMAGE}}}:{{.TAG}}"
+        if [ -n "{{.PUSH}}" ]; then
+          {{.DRY}} docker buildx build -t "$IMG" \
+            --build-arg DEVCONTAINER_IMAGE_DEFAULT="${MY_DEVCONTAINER_IMAGE:-{{.DEVCONTAINER_IMAGE}}}" \
+            --build-arg DEVCONTAINER_TAG_DEFAULT="{{.TAG}}" \
+            --platform linux/amd64,linux/arm64 . --push
+        else
+          {{.DRY}} docker buildx build -t "$IMG" \
+            --build-arg DEVCONTAINER_IMAGE_DEFAULT="${MY_DEVCONTAINER_IMAGE:-{{.DEVCONTAINER_IMAGE}}}" \
+            --build-arg DEVCONTAINER_TAG_DEFAULT="{{.TAG}}" \
+            . --load
+        fi
+        echo "Built $IMG"
+
+  build:
+    desc: |
+      Build the docker image locally and load it into the local docker daemon.
+    cmds:
+      - task: buildx
 
   update-opsroot:
+    desc: update the devcontainer image in olaris/opsroot.json
     silent: true
     cmds:
     - jq . ../olaris/opsroot.json >_opsroot.orig
-    - jq '.config.images.devcontainer = "{{.NAME}}:{{.TAG}}"' ../olaris/opsroot.json >_opsroot.json
+    - |
+      IMG="${MY_DEVCONTAINER_IMAGE:-{{.DEVCONTAINER_IMAGE}}}:{{.TAG}}"
+      jq --arg img "$IMG" '.config.images.devcontainer = $img' ../olaris/opsroot.json >_opsroot.json
     - diff _opsroot.orig _opsroot.json || cp -v _opsroot.json ../olaris/opsroot.json
 
-  image-tag:
-      - git tag -d "$(git tag)" || true
-      - git tag "0.1.0-incubating.$(date +%y%m%d%H%M)"
-      - echo {{.NAME}}:$(git tag --sort=-creatordate | head -n 1)
-
-  build:
-      - docker build -t "{{.NAME}}:{{.TAG}}" . --load
-      - task: show
-
   clean:
+    desc: remove the local containers and images
+    cmds:
       - docker rm -f ssh-devcontainer || true
       - docker images | awk '/<none>|devcontainer/{print $3}' | xargs docker rmi -f || true
 
   all:
-    - task: image-tag
+    desc: tag, build and update opsroot
+    cmds:
+    - task: tag
     # warning: the ':' is missing intentionally to reload the tag
     - task build
     - task update-opsroot
 
   publish:
+    desc: commit, tag and push - this starts the CI build
+    cmds:
     - git commit -m "publishing $(date)" -a || true
-    - task: image-tag
+    - task: tag
     - task update-opsroot
-    - git push origin main --tags
+    - task: ci
 
+  license:
+    desc: check license
+    cmds:
+    - license-eye header check

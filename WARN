@@ -1,0 +1,93 @@
+==============================================================================
+WARN -- Apache License 2.0 incompatibilities
+Container image: apache/openserverless-devcontainer
+==============================================================================
+
+This file lists third-party components bundled by the Dockerfile beside
+it whose licenses are NOT compatible with the Apache License, Version 2.0,
+together with components that require special handling.
+
+Classification follows the ASF third-party licensing policy:
+
+    https://www.apache.org/legal/resolved.html
+
+  Category A  Apache-2.0 compatible. May be included in a release.
+  Category B  May be included in BINARY form only, unmodified and as a
+              separate file, with the reciprocal license disclosed.
+  Category X  MUST NOT be included in an Apache release artifact.
+
+IMPORTANT SCOPE NOTE
+------------------------------------------------------------------------------
+The Apache release artifact for OpenServerless is the SOURCE distribution,
+which contains this Dockerfile and the files beside it -- all Apache-2.0
+licensed. The published container image is a CONVENIENCE BINARY assembled
+at build time from third-party base images and package repositories.
+Category X components inherited from a base operating system image are
+disclosed below but are not redistributed by the ASF in source form.
+Category X components that this Dockerfile ADDS on purpose must be removed.
+
+
+==============================================================================
+CATEGORY X
+==============================================================================
+
+  Component : nano
+  License   : GPL-3.0-or-later
+  Category  : X
+  Action    :
+      GNU nano is GPL-3.0-or-later. Installed by the apt list in this Dockerfile, so it
+      is added on purpose and is NOT covered by the base-image disclosure below.
+      REMOVE `nano` from the apt install list, or replace it with an editor under a
+      Category A licence.
+
+
+==============================================================================
+CATEGORY X (as installed)
+==============================================================================
+
+  Component : less
+  License   : GPL-3.0-or-later OR BSD-2-Clause
+  Category  : X (as installed)
+  Action    :
+      Debian ships `less` under the GPL-3.0 option. Developer convenience only.
+      REMOVE from the apt install list, or confirm the BSD-2-Clause option applies.
+
+
+==============================================================================
+CATEGORY X (as bundled)
+==============================================================================
+
+  Component : glibc / locales
+  License   : GPL-2.0-or-later AND LGPL-2.1-or-later
+  Category  : X (as bundled)
+  Action    :
+      Part of the base operating system image. Not distributed by the ASF as source;
+      the ASF release is the Dockerfile only. No action required beyond this disclosure.
+
+  Component : Debian/Ubuntu/Alpine base image userland
+  License   : mixed, incl. GPL-2.0/GPL-3.0
+  Category  : X (as bundled)
+  Action    :
+      The base image contains GPL-licensed operating-system components. The Apache release
+      artifact is the SOURCE (this Dockerfile and the files beside it); the published
+      container image is a convenience binary assembled from third-party base images.
+      No action required beyond this disclosure.
+
+
+==============================================================================
+SUMMARY OF REQUIRED REMOVALS (Category X added by this Dockerfile)
+==============================================================================
+
+  [ ] nano  --  GPL-3.0-or-later
+  [ ] less  --  GPL-3.0-or-later (Debian ships the GPL option)
+
+==============================================================================
+ADDITIONAL NOTES
+==============================================================================
+
+This is a DEVELOPER CONVENIENCE image. It deliberately bundles an interactive
+shell environment, so it carries more GPL-licensed operating-system tooling
+than the production images. It is not part of the deployed runtime and it is
+published as a convenience binary only; the Apache release artifact remains
+the Dockerfile and the scripts beside it.
+
