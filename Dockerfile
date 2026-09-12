@@ -18,15 +18,15 @@
 FROM golang:1.25 AS builder
 RUN go install github.com/apache/openserverless-cli/cmd/ops@0.9.0
 
-FROM node:22-bookworm
+FROM node:24-trixie
 COPY --from=builder /go/bin/ops /usr/local/bin/ops
 
 ARG DEVCONTAINER_IMAGE_DEFAULT=docker.io/apache/openserverless-devcontainer
 ARG DEVCONTAINER_TAG_DEFAULT=latest
 # Install basic development tools
 RUN \
-    apt update && \
-    apt install -y less sudo jq nano python-is-python3 python3-virtualenv \
+    DEBIAN_FRONTENND=noninteractive apt update && \
+     DEBIAN_FRONTENND=noninteractive apt install -y less sudo jq nano python-is-python3 python3-virtualenv \
     locales openssh-server tini supervisor postgresql-client-17 && \
     rm  -rf /var/lib/apt/lists/*
 
