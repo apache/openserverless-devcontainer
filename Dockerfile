@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM golang:1.27 AS builder
+FROM golang:1.25 AS builder
 RUN go install github.com/apache/openserverless-cli/cmd/ops@0.9.0
 
 FROM node:22
