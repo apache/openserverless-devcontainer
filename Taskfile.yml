@@ -166,3 +166,14 @@ tasks:
     desc: check license
     cmds:
     - license-eye header check
+
+  test:
+    desc: testing locally
+    vars:
+      KEY:
+        sh: echo $HOME/.ssh/id_rsa.pub
+    cmds:
+      - test -e {{.KEY}} || { echo 'missing {{.KEY}}' ; exit 1; }
+      - docker rm -f devcontainer
+      - docker run -d --name devcontainer -p 2222:2222 -e SSHKEY="$(cat {{.KEY}})" {{.DEVCONTAINER_IMAGE}}:{{.TAG}}
+      - echo "access devcontainer with ssh -p 2222 openserverless@localhost, terminate with docker rm devcontainer"

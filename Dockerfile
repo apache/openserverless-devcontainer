@@ -15,7 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
+FROM golang:1.27 AS builder
+RUN go install github.com/apache/openserverless-cli/cmd/ops@0.9.0
+
 FROM node:22
+COPY --from=builder /go/bin/ops /usr/local/bin/ops
 
 ARG DEVCONTAINER_IMAGE_DEFAULT=docker.io/apache/openserverless-devcontainer
 ARG DEVCONTAINER_TAG_DEFAULT=latest
@@ -25,7 +29,8 @@ RUN \
     curl -sSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     apt update && \
     apt install -y less sudo jq nano python-is-python3 python3-virtualenv \
-    locales postgresql-client-16 openssh-server tini supervisor
+    locales postgresql-client-16 openssh-server tini supervisor && \
+    rm  -rf /var/lib/apt/lists/*
 
 # setup env
 RUN \
@@ -34,21 +39,15 @@ RUN \
     locale-gen en_US.UTF-8 && \
     update-locale ANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
-RUN userdel node ; rm -Rvf /home/node
-ENV HOME=/home
-ENV OPS_HOME=/home
-ENV OPS_BRANCH=main
+ENV HOME=/home/openserverless
 ENV PATH=/home/.local/bin:/usr/local/bin:/usr/bin:/bin
-RUN printf "OPS_HOME=$OPS_HOME\nOPS_BRANCH=$OPS_BRANCH\nPATH=$PATH\n" >/etc/environment
-RUN \
-    curl -sL https://raw.githubusercontent.com/apache/openserverless-cli/refs/heads/main/install.sh | bash ;\
-    ops -t
+RUN /usr/local/bin/ops -t
 
 ADD supervisord.ini /etc/supervisord.ini
 ADD start.sh /usr/local/bin/start.sh
 
-RUN mkdir /home/workspace
-WORKDIR /home/workspace
+RUN mkdir -p /home/openserverless
+WORKDIR /home/openserverless
 # Apache release metadata (see DISCLAIMER, LICENSE, NOTICE, WARN)
 COPY DISCLAIMER LICENSE NOTICE /
 
