@@ -18,7 +18,7 @@
 FROM golang:1.25 AS builder
 RUN go install github.com/apache/openserverless-cli/cmd/ops@0.9.0
 
-FROM node:22
+FROM node:22-bookworm
 COPY --from=builder /go/bin/ops /usr/local/bin/ops
 
 ARG DEVCONTAINER_IMAGE_DEFAULT=docker.io/apache/openserverless-devcontainer
