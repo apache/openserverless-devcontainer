@@ -25,11 +25,9 @@ ARG DEVCONTAINER_IMAGE_DEFAULT=docker.io/apache/openserverless-devcontainer
 ARG DEVCONTAINER_TAG_DEFAULT=latest
 # Install basic development tools
 RUN \
-    echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-    curl -sSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
     apt update && \
     apt install -y less sudo jq nano python-is-python3 python3-virtualenv \
-    locales postgresql-client-16 openssh-server tini supervisor && \
+    locales openssh-server tini supervisor postgresql-client-17 && \
     rm  -rf /var/lib/apt/lists/*
 
 # setup env
