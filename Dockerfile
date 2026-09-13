@@ -55,7 +55,7 @@ ADD start.sh /usr/local/bin/start.sh
 RUN mkdir -p /home/openserverless
 WORKDIR /home/openserverless
 
-# Apache release metadata (see DISCLAIMER, LICENSE, NOTICE, WARN)
+# Apache release metadata (see DISCLAIMER, LICENSE, NOTICE)
 COPY DISCLAIMER LICENSE NOTICE /
 
 ENTRYPOINT ["tini", "--"]
