@@ -243,6 +243,13 @@ Copyright (c) 2009 The Go Authors. All rights reserved.
 
 ---------------
 
+The container image contains zip, which was released under the Info-ZIP
+license, a BSD-style permissive license.
+
+Copyright (c) 1990-2007 Info-ZIP.  All rights reserved.
+
+---------------
+
 The container image contains jq, which was released under an MIT license.
 
 Copyright (C) 2012 Stephen Dolan
@@ -311,26 +318,10 @@ Copyright (c) 2001-2025 Python Software Foundation. All rights reserved.
 
 ---------------
 
-The container image contains less, which Debian ships under the
-GPL-3.0-or-later option of its dual GPL-3.0-or-later OR BSD-2-Clause license.
-This component is listed in the WARN file.
-
-Copyright (C) 1984-2025 Mark Nudelman
-
----------------
-
-The container image contains nano, which was released under a
-GPL-3.0-or-later license. This component is listed in the WARN file.
-
-Copyright (C) 1999-2011, 2013-2025 Free Software Foundation, Inc.
-
----------------
-
-The container image contains the locales package and the GNU C Library
-(glibc), which were released under GPL-2.0-or-later AND LGPL-2.1-or-later
-licenses. These are supplied by the upstream base image and are not
-redistributed by the ASF in source form. This component is listed in the
-WARN file.
+The container image contains the GNU C Library (glibc), which was released
+under GPL-2.0-or-later AND LGPL-2.1-or-later licenses. It is supplied by the
+upstream base image and is not redistributed by the ASF in source form. This
+component is listed in the WARN file.
 
 Copyright (C) 1991-2025 Free Software Foundation, Inc.
 

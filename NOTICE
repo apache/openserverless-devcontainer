@@ -110,12 +110,17 @@ Copyright (c) 2020-2024 The virtualenv developers
 
 ---------------
 
-The container image contains less, nano and the GNU C Library (glibc), which
-were released under GPL and LGPL licenses, and inherits further
-operating-system components from its upstream Debian trixie base image under
-mixed licenses. These are disclosed in the WARN file and are not redistributed
-by the ASF in source form.
+The container image contains zip, which was released under the Info-ZIP
+license.
 
-Copyright (C) 1984-2025 Mark Nudelman (less)
-Copyright (C) 1999-2011, 2013-2025 Free Software Foundation, Inc. (nano)
+Copyright (c) 1990-2007 Info-ZIP.  All rights reserved.
+
+---------------
+
+The container image contains the GNU C Library (glibc), which was released
+under GPL and LGPL licenses, and inherits further operating-system components
+from its upstream Debian trixie base image under mixed licenses. These are
+disclosed in the WARN file and are not redistributed by the ASF in source
+form.
+
 Copyright (C) 1991-2025 Free Software Foundation, Inc. (glibc)
