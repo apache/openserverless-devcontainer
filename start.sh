@@ -40,6 +40,8 @@ then
     chmod 700 $HOME/.ssh
 fi
 
+/usr/bin/ops -t
+
 touch $HOME/.bashrc
 echo ARCH="$(dpkg --print-architecture)" >>~/.bashrc
 echo 'export PATH="$HOME/.local/bin:$HOME:$HOME/.ops/linux-$ARCH/bin:$PATH"' >>~/.bashrc

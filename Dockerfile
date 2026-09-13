@@ -14,20 +14,26 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-
-FROM golang:1.25 AS builder
-RUN go install github.com/apache/openserverless-cli/cmd/ops@0.9.0
-
 FROM node:24-trixie
-COPY --from=builder /go/bin/ops /usr/local/bin/ops
 
 ARG DEVCONTAINER_IMAGE_DEFAULT=docker.io/apache/openserverless-devcontainer
 ARG DEVCONTAINER_TAG_DEFAULT=latest
 # Install basic development tools
 RUN \
     DEBIAN_FRONTENND=noninteractive apt update && \
-     DEBIAN_FRONTENND=noninteractive apt install -y less sudo jq nano python-is-python3 python3-virtualenv \
-    locales openssh-server tini supervisor postgresql-client-17 && \
+    DEBIAN_FRONTENND=noninteractive apt install -y \
+        zip \
+        less \
+        sudo \
+        jq \
+        nano \
+        python-is-python3 \
+        python3-virtualenv \
+        locales \
+        openssh-server \
+        tini \
+        supervisor \
+        postgresql-client-17 && \
     rm  -rf /var/lib/apt/lists/*
 
 # setup env
@@ -39,13 +45,16 @@ RUN \
 
 ENV HOME=/home/openserverless
 ENV PATH=/home/.local/bin:/usr/local/bin:/usr/bin:/bin
-RUN /usr/local/bin/ops -t
+RUN \
+    curl -sL https://raw.githubusercontent.com/apache/openserverless-cli/refs/heads/0.9.0/install | bash ;\
+    mv -v /home/openserverless/.local/bin/ops /usr/bin/ops
 
 ADD supervisord.ini /etc/supervisord.ini
 ADD start.sh /usr/local/bin/start.sh
 
 RUN mkdir -p /home/openserverless
 WORKDIR /home/openserverless
+
 # Apache release metadata (see DISCLAIMER, LICENSE, NOTICE, WARN)
 COPY DISCLAIMER LICENSE NOTICE /
 
