@@ -23,13 +23,10 @@ RUN \
     DEBIAN_FRONTENND=noninteractive apt update && \
     DEBIAN_FRONTENND=noninteractive apt install -y \
         zip \
-        less \
         sudo \
         jq \
-        nano \
         python-is-python3 \
         python3-virtualenv \
-        locales \
         openssh-server \
         tini \
         supervisor \
@@ -37,11 +34,14 @@ RUN \
     rm  -rf /var/lib/apt/lists/*
 
 # setup env
-RUN \
-    touch /.bestiaenv && \
-    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-    locale-gen en_US.UTF-8 && \
-    update-locale ANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8
+#        less \
+#        nano \
+#        locales \
+#RUN \
+#    touch /.bestiaenv && \
+#    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
+#    locale-gen en_US.UTF-8 && \
+#    update-locale ANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 ENV HOME=/home/openserverless
 ENV PATH=/home/.local/bin:/usr/local/bin:/usr/bin:/bin
