@@ -21,13 +21,7 @@ header:
     copyright-owner: Apache Software Foundation
 
   paths-ignore:
-    - '.git-hooks/pre-commit'
-    - '**/_*'
     - 'LICENSE'
     - 'NOTICE'
     - 'DISCLAIMER'
-    - '**/DISCLAIMER.md'
     - WARN
-    - '.env.dist'
-    - '.gitattributes'
-    - '**/.npmrc'

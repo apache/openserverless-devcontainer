@@ -201,115 +201,142 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 
+---------------
 
-==============================================================================
-BEGIN BUNDLED THIRD-PARTY SOFTWARE INVENTORY (container image)
-==============================================================================
+Apache OpenServerless (Incubating) itself is licensed under the Apache License,
+Version 2.0, reproduced above. The Apache release artifact is the SOURCE
+distribution: this Dockerfile and the files beside it.
 
-==============================================================================
-LICENSES OF BUNDLED THIRD-PARTY SOFTWARE
-Container image: apache/openserverless-devcontainer
-==============================================================================
+The container image built from that Dockerfile is a CONVENIENCE BINARY and
+bundles the third-party components listed below, each under its own license.
+Components whose licenses are not compatible with the Apache License 2.0 are
+enumerated in the WARN file distributed with this LICENSE. Refer to
+https://www.apache.org/legal/resolved.html for the ASF classification of these
+licenses.
 
-Apache OpenServerless itself is licensed under the Apache License,
-Version 2.0, reproduced above. The container image built from the
-Dockerfile beside this file additionally bundles the third-party
-components listed below, each under its own license.
+The complete texts of the licenses referenced below are distributed with each
+component inside the container image, in the package metadata directories of
+the respective package manager:
 
-Refer to https://www.apache.org/legal/resolved.html for the ASF
-classification of these licenses. Components that are NOT compatible
-with the Apache License 2.0 are enumerated in the WARN file.
-
-------------------------------------------------------------------------------
-Summary by license
-------------------------------------------------------------------------------
-
-Apache-2.0
-    Apache OpenServerless CLI (ops) (main)
-
-BSD-2-Clause AND others
-    openssh-server ((Debian bookworm))
-
-BSD-derived (Supervisor License)
-    supervisor ((Debian bookworm))
-
-GPL-2.0-or-later AND LGPL-2.1-or-later
-    locales (glibc) ((Debian bookworm))
-
-GPL-3.0-or-later
-    nano ((Debian bookworm))
-
-GPL-3.0-or-later OR BSD-2-Clause
-    less ((Debian bookworm))
-
-ISC AND BSD-3-Clause
-    sudo ((Debian bookworm))
-
-MIT
-    Node.js (22)
-    jq ((Debian bookworm))
-    python3-virtualenv ((Debian bookworm))
-    tini ((Debian bookworm))
-
-PSF-2.0
-    python-is-python3 / python3 ((Debian bookworm))
-
-PostgreSQL License (BSD-like)
-    postgresql-client-16 ((PGDG apt repo))
-
-mixed; see WARN
-    (see the FROM line of the Dockerfile) (-)
-
-MIT-like (curl license)
-    curl ((Debian bookworm))
-
-------------------------------------------------------------------------------
-Detail by component
-------------------------------------------------------------------------------
-
-Tools installed by the Dockerfile
----------------------------------
-  Node.js (22) -- MIT
-      Base image node:22.
-  Apache OpenServerless CLI (ops) (main) -- Apache-2.0
-      Installed from apache/openserverless-cli.
-  less ((Debian bookworm)) -- GPL-3.0-or-later OR BSD-2-Clause
-      *** SEE WARN ***
-  sudo ((Debian bookworm)) -- ISC AND BSD-3-Clause
-  jq ((Debian bookworm)) -- MIT
-  nano ((Debian bookworm)) -- GPL-3.0-or-later
-      *** SEE WARN ***
-  python-is-python3 / python3 ((Debian bookworm)) -- PSF-2.0
-  python3-virtualenv ((Debian bookworm)) -- MIT
-  locales (glibc) ((Debian bookworm)) -- GPL-2.0-or-later AND LGPL-2.1-or-later
-      *** SEE WARN ***
-  postgresql-client-16 ((PGDG apt repo)) -- PostgreSQL License (BSD-like)
-  openssh-server ((Debian bookworm)) -- BSD-2-Clause AND others
-  tini ((Debian bookworm)) -- MIT
-  supervisor ((Debian bookworm)) -- BSD-derived (Supervisor License)
-  curl ((Debian bookworm)) -- MIT-like (curl license)
-
-Base operating system image
----------------------------
-  (see the FROM line of the Dockerfile) (-) -- mixed; see WARN
-      Operating-system components are supplied by the upstream base image and are not
-      redistributed by the ASF in source form.
-
-------------------------------------------------------------------------------
-Full license texts
-------------------------------------------------------------------------------
-
-The complete text of the Apache License 2.0 is reproduced at the top of
-this file. The complete texts of the other licenses referenced above are
-distributed with each component inside the container image, in the
-package metadata directories of the respective package manager:
-
-  * Python packages: <site-packages>/<dist>.dist-info/ (LICENSE, METADATA)
-  * Node.js packages: /node_modules/<pkg>/LICENSE
-  * PHP packages:     /phpAction/composer/vendor/<pkg>/LICENSE
-  * Go modules:       vendored module sources / pkg.go.dev
   * Debian packages:  /usr/share/doc/<pkg>/copyright
+  * Node.js packages: /usr/local/lib/node_modules/<pkg>/LICENSE
+  * Go modules:       vendored module sources / pkg.go.dev
 
-==============================================================================
-END BUNDLED THIRD-PARTY SOFTWARE INVENTORY
-==============================================================================
+---------------
+
+The container image contains the Apache OpenServerless CLI (ops), built from
+apache/openserverless-cli, which was released under an Apache 2.0 license.
+
+---------------
+
+The container image is based on the node:24-trixie image, which contains
+Node.js, released under an MIT license.
+
+Copyright Node.js contributors
+
+---------------
+
+The container image contains the Go toolchain output of the golang:1.25
+builder image. Go was released under a BSD-3-Clause license.
+
+Copyright (c) 2009 The Go Authors. All rights reserved.
+
+---------------
+
+The container image contains jq, which was released under an MIT license.
+
+Copyright (C) 2012 Stephen Dolan
+
+---------------
+
+The container image contains tini, which was released under an MIT license.
+
+Copyright (c) 2015 Thomas Orozco
+
+---------------
+
+The container image contains python3-virtualenv, which was released under an
+MIT license.
+
+Copyright (c) 2007 Ian Bicking and Contributors
+Copyright (c) 2009 Ian Bicking, The Open Planning Project
+Copyright (c) 2011-2016 The virtualenv developers
+Copyright (c) 2020-2024 The virtualenv developers
+
+---------------
+
+The container image contains curl, which was released under the curl license,
+an MIT/X derivative license.
+
+Copyright (c) 1996 - 2025, Daniel Stenberg, <daniel@haxx.se>, and many
+contributors.
+
+---------------
+
+The container image contains sudo, which was released under an ISC-style
+license, and contains code under a BSD-3-Clause license.
+
+Copyright (c) 1994-1996, 1998-2024 Todd C. Miller <Todd.Miller@sudo.ws>
+
+---------------
+
+The container image contains openssh-server, which was released under a
+BSD-2-Clause license, and contains code under additional BSD-style licenses.
+
+Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
+Copyright (c) 1999-2024 OpenBSD project contributors
+
+---------------
+
+The container image contains supervisor, which was released under a
+BSD-derived license (the Supervisor license).
+
+Copyright (c) 2006-2024 Agendaless Consulting and Contributors
+
+---------------
+
+The container image contains postgresql-client-17, obtained from the PGDG apt
+repository, which was released under the PostgreSQL License, a BSD-like
+license.
+
+Portions Copyright (c) 1996-2025, PostgreSQL Global Development Group
+Portions Copyright (c) 1994, The Regents of the University of California
+
+---------------
+
+The container image contains python3 and python-is-python3, which were
+released under the Python Software Foundation License Version 2.
+
+Copyright (c) 2001-2025 Python Software Foundation. All rights reserved.
+
+---------------
+
+The container image contains less, which Debian ships under the
+GPL-3.0-or-later option of its dual GPL-3.0-or-later OR BSD-2-Clause license.
+This component is listed in the WARN file.
+
+Copyright (C) 1984-2025 Mark Nudelman
+
+---------------
+
+The container image contains nano, which was released under a
+GPL-3.0-or-later license. This component is listed in the WARN file.
+
+Copyright (C) 1999-2011, 2013-2025 Free Software Foundation, Inc.
+
+---------------
+
+The container image contains the locales package and the GNU C Library
+(glibc), which were released under GPL-2.0-or-later AND LGPL-2.1-or-later
+licenses. These are supplied by the upstream base image and are not
+redistributed by the ASF in source form. This component is listed in the
+WARN file.
+
+Copyright (C) 1991-2025 Free Software Foundation, Inc.
+
+---------------
+
+The container image inherits further operating-system components from its
+upstream Debian trixie base image, under mixed licenses including GPL-2.0 and
+GPL-3.0. These components are supplied by the upstream base image and are not
+redistributed by the ASF in source form. They are disclosed in the WARN file.
