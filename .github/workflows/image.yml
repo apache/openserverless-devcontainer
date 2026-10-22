@@ -20,7 +20,8 @@ on:
   push:
     tags:
       - '*.*.*.*'
-    branches-ignore: '**'
+    branches-ignore:
+    - '**'
   workflow_dispatch:
 
 jobs:
