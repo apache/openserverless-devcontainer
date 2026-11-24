@@ -17,89 +17,176 @@
 #
 name: Build Image
 on:
+  pull_request:
+    branches:
+      - '0.9.0'
   push:
     tags:
       - '*.*.*.*'
     branches-ignore:
-    - '**'
+      - '**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  image:
-    name: Build OpenServerless Devcontainer Image
+  release:
+    name: Determine release image and tag
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-22.04
     permissions:
       contents: write
-      packages: write
+    outputs:
+      image: ${{ steps.metadata.outputs.image }}
+      registry: ${{ steps.metadata.outputs.registry }}
+      registry_host: ${{ steps.metadata.outputs.registry_host }}
+      tag: ${{ steps.metadata.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          submodules: recursive
-          # full history and tags: "task tag" replaces the existing tags
-          # and "git describe" needs them to be present
+          # "task tag" replaces the local tags and "git describe" uses them.
           fetch-depth: 0
-      - name: Setup
+      - name: Set up Task
+        if: github.event_name == 'workflow_dispatch'
         run: |
           sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
-      # Manual run: create a new snapshot tag on the current HEAD and push it.
-      # The push of the tag does not start another run (GITHUB_TOKEN pushes do
-      # not trigger workflows), so this same run goes on and builds it.
       - name: Tag HEAD (manual run)
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: github.event_name == 'workflow_dispatch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           task tag
           task ci
-          echo "IMG_TAG=$(git describe --tags --abbrev=0)" >> "$GITHUB_ENV"
-      - name: Assign TAG from push
-        if: ${{ github.event_name == 'push' }}
-        run: echo "IMG_TAG=${{ github.ref_name }}" >> "$GITHUB_ENV"
-      - name: Generate .env
-        run: |
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          if [ "$OWNER" = "apache" ]; then
-            IMAGE=$(awk -F= '/ARG DEVCONTAINER_IMAGE_DEFAULT=/ { print $2 ; exit }' Dockerfile)
-          else
-            IMAGE="ghcr.io/$OWNER/openserverless-devcontainer"
-          fi
-          echo "GITHUB_USER=$OWNER" > .env
-          echo "MY_DEVCONTAINER_IMAGE=$IMAGE" >> .env
-          cat .env
-      - name: Select registry
+      - name: Determine release metadata
+        id: metadata
+        shell: bash
         env:
           DOCKERHUB_REGISTRY: ${{ secrets.DOCKERHUB_REGISTRY }}
         run: |
-          if [ -n "$DOCKERHUB_REGISTRY" ]; then
-            REGISTRY="$DOCKERHUB_REGISTRY"
-          elif [ "${{ github.repository_owner }}" = "apache" ]; then
-            REGISTRY="docker.io"
+          owner=${GITHUB_REPOSITORY_OWNER,,}
+          if [[ "$owner" == apache ]]; then
+            image=$(awk -F= '/ARG DEVCONTAINER_IMAGE_DEFAULT=/ { print $2; exit }' Dockerfile)
+            registry=${DOCKERHUB_REGISTRY:-docker.io}
           else
-            REGISTRY="ghcr.io"
+            image="ghcr.io/$owner/openserverless-devcontainer"
+            registry=${DOCKERHUB_REGISTRY:-ghcr.io}
           fi
-          echo "REGISTRY=$REGISTRY" >> "$GITHUB_ENV"
-      - name: Select registry credentials
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            tag=$(git describe --tags --abbrev=0)
+          else
+            tag=$GITHUB_REF_NAME
+          fi
+          {
+            printf 'image=%s\n' "$image"
+            printf 'registry=%s\n' "$registry"
+            printf 'registry_host=%s\n' "${registry%%/*}"
+            printf 'tag=%s\n' "$tag"
+          } >> "$GITHUB_OUTPUT"
+
+  image:
+    name: Build OpenServerless Devcontainer Image (${{ matrix.arch }})
+    needs: release
+    if: ${{ !cancelled() && (github.event_name == 'pull_request' || needs.release.result == 'success') }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-22.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Registry login
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ needs.release.outputs.registry }}
+          username: ${{ needs.release.outputs.registry_host == 'ghcr.io' && github.actor || secrets.DOCKERHUB_USER }}
+          password: ${{ needs.release.outputs.registry_host == 'ghcr.io' && secrets.GITHUB_TOKEN || secrets.DOCKERHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build native image
+        shell: bash
+        env:
+          ARCH: ${{ matrix.arch }}
+          RELEASE_IMAGE: ${{ needs.release.outputs.image }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
         run: |
-          if [ "${REGISTRY%%/*}" = "ghcr.io" ]; then
-            echo "REGISTRY_USER=${{ github.actor }}" >> "$GITHUB_ENV"
-            echo "REGISTRY_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> "$GITHUB_ENV"
+          test "$(dpkg --print-architecture)" = "$ARCH"
+          image=${RELEASE_IMAGE:-$(awk -F= '/ARG DEVCONTAINER_IMAGE_DEFAULT=/ { print $2; exit }' Dockerfile)}
+          tag=${RELEASE_TAG:-pr-$GITHUB_SHA}
+          build_args=(
+            --platform "linux/$ARCH"
+            --build-arg "DEVCONTAINER_IMAGE_DEFAULT=$image"
+            --build-arg "DEVCONTAINER_TAG_DEFAULT=$tag"
+          )
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            docker buildx build "${build_args[@]}" --tag "$image:$tag" --load .
+            docker run --rm --network none --entrypoint /bin/sh "$image:$tag" -ec '
+              test "$(dpkg --print-architecture)" = "$1"
+              python3 -c "import importlib.util; assert importlib.util.MAGIC_NUMBER"
+              python3 -m virtualenv --version
+              psql --version
+              test -x /usr/bin/ops
+            ' smoke-test "$ARCH"
           else
-            echo "REGISTRY_USER=${{ secrets.DOCKERHUB_USER }}" >> "$GITHUB_ENV"
-            echo "REGISTRY_TOKEN=${{ secrets.DOCKERHUB_TOKEN }}" >> "$GITHUB_ENV"
+            docker buildx build "${build_args[@]}" \
+              --output "type=image,name=$image,push-by-digest=true,name-canonical=true,push=true" \
+              --metadata-file "$RUNNER_TEMP/image-metadata.json" .
+            mkdir -p "$RUNNER_TEMP/digests"
+            jq -er '."containerimage.digest" | select(test("^sha256:[a-f0-9]{64}$"))' \
+              "$RUNNER_TEMP/image-metadata.json" > "$RUNNER_TEMP/digests/$ARCH"
           fi
+      - name: Upload image digest
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish multi-platform image
+    needs: [release, image]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Download image digests
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
       - name: Registry login
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ env.REGISTRY_USER }}
-          password: ${{ env.REGISTRY_TOKEN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
-        with:
-          image: tonistiigi/binfmt:qemu-v7.0.0-28
+          registry: ${{ needs.release.outputs.registry }}
+          username: ${{ needs.release.outputs.registry_host == 'ghcr.io' && github.actor || secrets.DOCKERHUB_USER }}
+          password: ${{ needs.release.outputs.registry_host == 'ghcr.io' && secrets.GITHUB_TOKEN || secrets.DOCKERHUB_TOKEN }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Image
-        run: task buildx PUSH=1 DEVCONTAINER_TAG=$IMG_TAG
-
+      - name: Create release manifest
+        shell: bash
+        env:
+          IMAGE: ${{ needs.release.outputs.image }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          amd64=$(cat "$RUNNER_TEMP/digests/amd64")
+          arm64=$(cat "$RUNNER_TEMP/digests/arm64")
+          [[ "$amd64" =~ ^sha256:[a-f0-9]{64}$ && "$arm64" =~ ^sha256:[a-f0-9]{64}$ ]]
+          docker buildx imagetools create --tag "$IMAGE:$TAG" "$IMAGE@$amd64" "$IMAGE@$arm64"
